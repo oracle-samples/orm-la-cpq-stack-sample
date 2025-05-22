@@ -1,0 +1,192 @@
+## Copyright (c) 2025, Oracle and/or its affiliates.
+## Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl
+
+title: "CPQ Logging Analytics Integration Stack"
+description: "Automate Logging Analytics and CPQ reporting setup in your OCI compartment"
+
+stackDescription: "Automate CPQ monitoring with Logging Analytics integration. Creates compute instance with Management Agent and Logging Analytics plugin. Plugin monitors CPQ event logs and downloads logs to Logging Analytics entity."
+
+schemaVersion: 1.1.0
+version: "20250219"
+locale: "en"
+
+variableGroups:
+- title: "General Configuration"
+  visible: false
+  variables:
+  - compartment_ocid
+  - tenancy_ocid
+  - region
+  - image_operating_system
+  - image_operating_system_version
+
+- title: "Network Configuration"
+  visible: true  
+  variables:
+  - use_existing_vcn
+  - vcn_ocid
+  - public_subnet_ocid
+
+- title: "Compute Shape"
+  variables:
+  - instance_shape
+  - image_operating_system
+  - image_operating_system_version
+  - ad_name
+
+- title: "SSH Key Configuration"
+  variables:
+  - ssh_public_key
+
+- title: "CPQ Settings"
+  variables:
+  - cpq_logan_prefix
+  - cpq_host
+  - cpq_version
+  - cpq_username
+  - cpq_pwd
+
+- title: "Agent Wallet Credentials Wait Settings"
+  variables:
+  - num_iterations
+  - wait_duration
+
+
+variables:
+
+  use_existing_vcn:
+    type: boolean
+    title: "Use existing virtual cloud network?"
+    description: "If true, select existing virtual cloud network for compute instance, else create new virtual cloud network."
+    required: true
+    default: false
+
+  vcn_ocid:
+    # Populates available values for VCN
+    title: "Virtual cloud network"
+    type: oci:core:vcn:id
+    # determines values for VCN prepopulation from selected compartment
+    dependsOn:
+      compartmentId: ${compartment_ocid}
+    description: "Select an existing virtual cloud network."
+    required: false
+    # Show only when create_vcn variable is selected
+    visible: use_existing_vcn    
+
+  public_subnet_ocid:
+    # Populates available values for public subnet
+    title: "VCN public subnet"
+    type: oci:core:subnet:id
+    # Determines values for subnet prepopulation from selected compartment and VCN
+    dependsOn:
+      compartmentId: ${compartment_ocid}
+      vcnId: ${vcn_ocid}
+    description: "Select an existing public subnet in the virtual cloud network."
+    required: false
+    # Show only when create_vcn variable is selected
+    visible: use_existing_vcn
+
+  instance_shape:
+    # Determines values for compute shape prepopulation from selected compartment
+    dependsOn:
+      compartmentId: ${compartment_ocid}
+    type: enum
+    enum:
+      - "VM.Standard1.1"
+      - "VM.Standard1.2"
+      - "VM.Standard1.4"
+      - "VM.Standard1.8"
+      - "VM.Standard1.16"    
+      - "VM.Standard.E2.1"
+      - "VM.Standard.E2.2"
+      - "VM.Standard.E2.4"
+      - "VM.Standard.E2.8"
+      - "VM.Standard.E3.Flex"
+      - "VM.Standard.E4.Flex"
+    title: "Select a shape for the compute instances"
+    description: "A shape is a template that determines the number of CPUs, amount of memory, and other resources allocated to a newly created instance."
+    required: true
+
+  image_operating_system:
+    dependsOn:
+      compartmentId: ${compartment_ocid}
+    type: enum
+    enum:
+      - "Oracle Linux"
+    title: "Image operating system"
+    description: "Currently Oracle Linux is the only supported operating system."
+    required: true
+
+  image_operating_system_version:
+    dependsOn:
+      compartmentId: ${compartment_ocid}
+    type: enum
+    enum:
+      - "7.9"
+      - "8"
+      - "9"
+    title: "Operating system version"
+    description: "Select image operating system version."
+    required: true
+  
+  ad_name:
+    type: oci:identity:availabilitydomain:name
+    dependsOn:
+      compartmentId: ${compartment_ocid}
+    title: "Availabity Domain"
+    description: "Select an Availability Domain for your compute instance. Availablity domain is one or more data centers located within a region."
+    required: true
+
+  ssh_public_key:
+    type: oci:core:ssh:publickey
+    title: "SSH Public Key"
+    description: "The public SSH key for the key-pair that you want to use, if you wish to login to the instances over SSH."
+    additionalProps:
+      allowMultiple: true
+    pattern: "((^(ssh-rsa AAAAB3NzaC1yc2|ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNT|ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzOD|ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1Mj|ssh-ed25519 AAAAC3NzaC1lZDI1NTE5|ssh-dss AAAAB3NzaC1kc3)[0-9A-Za-z+\/]+[=]{0,3})( [^,]*)?)(,((ssh-rsa AAAAB3NzaC1yc2|ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNT|ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzOD|ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1Mj|ssh-ed25519 AAAAC3NzaC1lZDI1NTE5|ssh-dss AAAAB3NzaC1kc3)[0-9A-Za-z+\/]+[=]{0,3})( [^,]*)?)*$"
+    required: true
+
+  cpq_host:
+    type: string
+    title: "CPQ Host Name"
+    description: "Oracle CPQ service host name"
+    required: true
+
+  cpq_version:
+    type: string
+    title: "CPQ API Version"
+    description: "Oracle CPQ service API version"
+    required: true
+
+  cpq_username:
+    type: string
+    title: "CPQ Username"
+    description: "User name used for basic authentication for REST API requests"
+    required: true
+
+  cpq_pwd:
+    type: password
+    title: "CPQ Password"
+    description: "Password used for basic authentication for REST API requests"
+    required: true
+    # Marks password variable as sensitive
+    sensitive: true
+
+  cpq_logan_prefix:
+    type: string
+    title: "CPQ-Logging Analytics Resource Prefix"
+    description: "Prefix for CPQ-Logging Analytics resources created by stack. Includes CPQ credentials name used while creating the REST API log source in Logging Analytics. For more details please refer <a target=\"_blank\" href=\"https://docs.oracle.com/en-us/iaas/logging-analytics/doc/set-rest-api-log-collection.html\">Select the Credential Type for REST API Log Collection.</a>"
+
+  num_iterations:
+    type: integer
+    title: "Number of Iterations"
+    description: "Number of iterations to wait for CPQ credentials to be added to agent wallet."
+    minimum: 1
+    default: 10
+
+  wait_duration:
+    type: integer
+    title: "Wait Duration (seconds)"
+    description: "Wait duration per iteration for CPQ credentials to be added to agent wallet."
+    minimum: 0
+    default: 60

@@ -1,0 +1,2 @@
+# Oracle Cloud Infrastructure Python SDK
+oci

@@ -1,0 +1,12 @@
+# Ignore all zip archives
+*.zip
+
+# Ignore sample tfvars values
+sample.auto.tfvars
+
+# Ignore __pycache__ folders
+__pycache__/
+
+# Ignore all virtual environment
+.venv
+oci_sdk_env
